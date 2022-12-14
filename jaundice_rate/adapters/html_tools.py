@@ -1,9 +1,9 @@
-DEFAULT_BLACKLIST_TAGS = [
+DEFAULT_BLACKLIST_TAGS = frozenset([
     'script',
     'time'
-]
+])
 
-DEFAULT_UNWRAPLIST_TAGS = [
+DEFAULT_UNWRAPLIST_TAGS = frozenset([
     'div',
     'p',
     'span',
@@ -11,7 +11,7 @@ DEFAULT_UNWRAPLIST_TAGS = [
     'article',
     'header',
     'footer'
-]
+])
 
 
 def remove_buzz_attrs(soup):
@@ -32,7 +32,7 @@ def remove_buzz_attrs(soup):
 
 
 def remove_buzz_tags(soup, blacklist=DEFAULT_BLACKLIST_TAGS, unwraplist=DEFAULT_UNWRAPLIST_TAGS):
-    """Remove most of tags, leaves only tags significant for text analysis."""
+    """Remove most of the tags, leaves only tags significant for text analysis."""
     for tag in soup.find_all(True):
         if tag.name in blacklist:
             tag.decompose()
