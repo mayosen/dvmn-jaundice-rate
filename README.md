@@ -23,22 +23,17 @@ $ pip install -r requirements.txt
 # Как запустить
 
 ```bash
-$ python main.py
+$ python jaundice_rate/main.py
 ```
 
 # Как запустить тесты
 
-Для тестирования используется [pytest](https://docs.pytest.org/en/latest/), 
-тестами покрыты фрагменты кода, сложные в отладке: text_tools.py и адаптеры. 
+Для тестирования используется [pytest](https://docs.pytest.org/en/latest/).
+Тестами покрыты фрагменты кода, сложные в отладке: `text_tools.py` и адаптеры. 
 
-Команды для запуска тестов:
-
+Команда для запуска тестов:
 ```bash
-$ python -m pytest adapters/inosmi_ru.py
-```
-
-```bash
-$ python -m pytest text_tools.py
+$ python -m pytest
 ```
 
 # Цели проекта
