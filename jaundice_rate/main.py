@@ -7,18 +7,10 @@ import pymorphy2
 
 from adapters import SANITIZERS
 from text_tools import split_by_words, calculate_jaundice_rate
+from words_tools import CHARGED_WORDS
 
 
-def read_words(filename: str):
-    with open(filename, "r") as file:
-        lines = file.readlines()
-        return [line.rstrip("\n") for line in lines]
-
-
-CHARGED_WORDS = read_words("negative_words.txt") + read_words("positive_words.txt")
-
-
-async def fetch(session, url):
+async def fetch(session: aiohttp.ClientSession, url: str):
     async with session.get(url) as response:
         response.raise_for_status()
         return await response.text()
@@ -31,7 +23,7 @@ class ProcessedArticle:
     words: int
 
 
-async def process_article(session, url, result_list: list[ProcessedArticle]):
+async def process_article(session: aiohttp.ClientSession, url: str, result_list: list[ProcessedArticle]):
     html = await fetch(session, url)
     sanitizer = SANITIZERS.get("inosmi_ru")
     plaintext = sanitizer(html, plaintext=True)
