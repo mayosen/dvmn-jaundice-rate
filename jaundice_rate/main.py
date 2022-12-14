@@ -7,7 +7,7 @@ import aiohttp
 import anyio
 import pymorphy2
 
-from adapters import SANITIZERS
+from adapters import SANITIZERS, ArticleNotFound
 from text_tools import split_by_words, calculate_jaundice_rate
 from words_tools import CHARGED_WORDS
 
@@ -21,6 +21,7 @@ async def fetch(session: aiohttp.ClientSession, url: str):
 class ProcessingStatus(Enum):
     OK = "OK"
     FETCH_ERROR = "FETCH_ERROR"
+    PARSING_ERROR = "PARSING_ERROR"
 
 
 @dataclass
@@ -29,6 +30,14 @@ class ProcessedArticle:
     status: ProcessingStatus
     rating: Optional[float]
     words: Optional[int]
+
+    def format(self):
+        return (
+            f"URL: {self.url}\n"
+            f"Статус: {self.status.value}\n"
+            f"Рейтинг: {self.rating}\n"
+            f"Слов в статье: {self.words}\n"
+        )
 
 
 async def process_article(session: aiohttp.ClientSession, url: str, result_list: list[ProcessedArticle]):
@@ -42,6 +51,9 @@ async def process_article(session: aiohttp.ClientSession, url: str, result_list:
         result_list.append(ProcessedArticle(url, ProcessingStatus.OK, rate, len(article_words)))
     except aiohttp.ClientError:
         result_list.append(ProcessedArticle(url, ProcessingStatus.FETCH_ERROR, None, None))
+    except ArticleNotFound:
+        # TODO: Логичнее выбрасывать ошибку по отсутствию нужного санитайзера в SANITIZERS
+        result_list.append(ProcessedArticle(url, ProcessingStatus.PARSING_ERROR, None, None))
 
 
 async def main():
@@ -52,6 +64,7 @@ async def main():
         "https://inosmi.ru/20221214/kitay-258839420.html",
         "https://inosmi.ru/20221214/katargeyt-258839069.html",
         "https://inosmi.ru/not/exist.html",
+        "https://lenta.ru/brief/2021/08/26/afg_terror/",
     ]
 
     async with aiohttp.ClientSession() as session:
@@ -61,13 +74,8 @@ async def main():
             for url in TEST_ARTICLES:
                 tg.start_soon(process_article, session, url, processed_articles)
 
-        for article in processed_articles:
-            print(
-                f"URL: {article.url}\n"
-                f"Статус: {article.status.value}\n"
-                f"Рейтинг: {article.rating}\n"
-                f"Слов в статье: {article.words}\n"
-            )
+        formatted_articles = [article.format() for article in processed_articles]
+        print("\n".join(formatted_articles))
 
 
 if __name__ == "__main__":
