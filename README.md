@@ -23,7 +23,7 @@ $ pip install -r requirements.txt
 # Как запустить
 
 ```bash
-$ python jaundice_rate/main.py
+$ python jaundice_rate/analyzer.py
 ```
 
 # Как запустить тесты

@@ -53,7 +53,6 @@ async def process_article(morph: MorphAnalyzer, session: ClientSession, url: str
         with timing() as timer:
             sanitizer = SANITIZERS.get("inosmi_ru")
             plaintext = sanitizer(html, plaintext=True)
-            # plaintext = await fetch(session, "https://dvmn.org/media/filer_public/51/83/51830f54-7ec7-4702-847b-c5790ed3724c/gogol_nikolay_taras_bulba_-_bookscafenet.txt")
 
             async with async_timeout.timeout(3):
                 article_words = await split_by_words(morph, plaintext)
