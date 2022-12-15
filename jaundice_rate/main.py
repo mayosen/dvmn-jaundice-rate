@@ -1,18 +1,17 @@
 import asyncio
 import logging
-import time
-from contextlib import contextmanager
-from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
 import aiohttp
 import anyio
+import async_timeout
 import pymorphy2
 from aiohttp import ClientSession
 from pymorphy2 import MorphAnalyzer
 
 from adapters import SANITIZERS, ArticleNotFound
+from timer import timing
 from text_tools import split_by_words, calculate_jaundice_rate
 from words_tools import CHARGED_WORDS
 
@@ -47,36 +46,33 @@ async def fetch(session: aiohttp.ClientSession, url: str):
         return await response.text()
 
 
-@dataclass
-class Timer:
-    elapsed: float
-
-
-@contextmanager
-def timing():
-    timer = Timer(0)
-    start = time.monotonic()
-    yield timer
-    timer.elapsed = time.monotonic() - start
-
-
 async def process_article(morph: MorphAnalyzer, session: ClientSession, url: str, result_list: list[ProcessedArticle]):
     try:
         html = await fetch(session, url)
+
         with timing() as timer:
             sanitizer = SANITIZERS.get("inosmi_ru")
             plaintext = sanitizer(html, plaintext=True)
-            article_words = split_by_words(morph, plaintext)
+            # plaintext = await fetch(session, "https://dvmn.org/media/filer_public/51/83/51830f54-7ec7-4702-847b-c5790ed3724c/gogol_nikolay_taras_bulba_-_bookscafenet.txt")
+
+            async with async_timeout.timeout(3):
+                article_words = await split_by_words(morph, plaintext)
+
             rate = calculate_jaundice_rate(article_words, CHARGED_WORDS)
-        logger.info("Анализ закончен за %.2f сек", round(timer.elapsed, 2))
+
+        logger.info("Анализ %s закончен за %.2f сек", url, round(timer.elapsed, 2))
         result_list.append(ProcessedArticle(url, ProcessingStatus.OK, rate, len(article_words)))
+
     except aiohttp.ClientError:
         result_list.append(ProcessedArticle(url, ProcessingStatus.FETCH_ERROR))
+
     except ArticleNotFound:
-        # TODO: Логичнее выбрасывать ошибку по отсутствию нужного санитайзера в SANITIZERS
         result_list.append(ProcessedArticle(url, ProcessingStatus.PARSING_ERROR))
+        # TODO: Логичнее выбрасывать ошибку по отсутствию нужного санитайзера в SANITIZERS
+
     except asyncio.TimeoutError:
         result_list.append(ProcessedArticle(url, ProcessingStatus.TIMEOUT))
+        # TODO: Тесты на все исключения
 
 
 async def main():

@@ -9,9 +9,10 @@ def morph():
     return pymorphy2.MorphAnalyzer()
 
 
-def test_split_by_words(morph):
-    assert split_by_words(morph, 'Во-первых, он хочет, чтобы') == ['во-первых', 'хотеть', 'чтобы']
-    assert split_by_words(morph, '«Удивительно, но это стало началом!»') == ['удивительно', 'это', 'стать', 'начало']
+@pytest.mark.asyncio
+async def test_split_by_words(morph):
+    assert await split_by_words(morph, 'Во-первых, он хочет, чтобы') == ['во-первых', 'хотеть', 'чтобы']
+    assert await split_by_words(morph, '«Удивительно, но это стало началом!»') == ['удивительно', 'это', 'стать', 'начало']
 
 
 def test_calculate_jaundice_rate():

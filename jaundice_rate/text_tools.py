@@ -1,3 +1,4 @@
+import asyncio
 import string
 
 import pymorphy2
@@ -10,7 +11,7 @@ def _clean_word(word: str):
     return word
 
 
-def split_by_words(morph: pymorphy2.MorphAnalyzer, text: str):
+async def split_by_words(morph: pymorphy2.MorphAnalyzer, text: str):
     """Учитывает знаки пунктуации, регистр и словоформы, выкидывает предлоги."""
     words = []
     for word in text.split():
@@ -18,6 +19,7 @@ def split_by_words(morph: pymorphy2.MorphAnalyzer, text: str):
         normalized_word = morph.parse(cleaned_word)[0].normal_form
         if len(normalized_word) > 2 or normalized_word == 'не':
             words.append(normalized_word)
+        await asyncio.sleep(0)
     return words
 
 
