@@ -1,4 +1,8 @@
 import asyncio
+import logging
+import time
+from contextlib import contextmanager
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
@@ -11,6 +15,8 @@ from pymorphy2 import MorphAnalyzer
 from adapters import SANITIZERS, ArticleNotFound
 from text_tools import split_by_words, calculate_jaundice_rate
 from words_tools import CHARGED_WORDS
+
+logger = logging.getLogger(__name__)
 
 
 class ProcessingStatus(Enum):
@@ -41,13 +47,28 @@ async def fetch(session: aiohttp.ClientSession, url: str):
         return await response.text()
 
 
+@dataclass
+class Timer:
+    elapsed: float
+
+
+@contextmanager
+def timing():
+    timer = Timer(0)
+    start = time.monotonic()
+    yield timer
+    timer.elapsed = time.monotonic() - start
+
+
 async def process_article(morph: MorphAnalyzer, session: ClientSession, url: str, result_list: list[ProcessedArticle]):
     try:
         html = await fetch(session, url)
-        sanitizer = SANITIZERS.get("inosmi_ru")
-        plaintext = sanitizer(html, plaintext=True)
-        article_words = split_by_words(morph, plaintext)
-        rate = calculate_jaundice_rate(article_words, CHARGED_WORDS)
+        with timing() as timer:
+            sanitizer = SANITIZERS.get("inosmi_ru")
+            plaintext = sanitizer(html, plaintext=True)
+            article_words = split_by_words(morph, plaintext)
+            rate = calculate_jaundice_rate(article_words, CHARGED_WORDS)
+        logger.info("Анализ закончен за %.2f сек", round(timer.elapsed, 2))
         result_list.append(ProcessedArticle(url, ProcessingStatus.OK, rate, len(article_words)))
     except aiohttp.ClientError:
         result_list.append(ProcessedArticle(url, ProcessingStatus.FETCH_ERROR))
@@ -59,6 +80,12 @@ async def process_article(morph: MorphAnalyzer, session: ClientSession, url: str
 
 
 async def main():
+    logging.basicConfig(
+        format="[%(asctime)s.%(msecs).03d] %(levelname)s [%(name)s] %(message)s",
+        datefmt="%H:%M:%S",
+        level=logging.DEBUG,
+    )
+
     TEST_ARTICLES = [
         "https://inosmi.ru/20221214/eneregetika-258837716.html",
         "https://inosmi.ru/20221214/kitay-258839981.html",
