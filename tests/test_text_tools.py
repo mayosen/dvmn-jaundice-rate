@@ -9,7 +9,6 @@ def morph():
     return pymorphy2.MorphAnalyzer()
 
 
-@pytest.mark.asyncio
 async def test_split_by_words(morph):
     assert await split_by_words(morph, 'Во-первых, он хочет, чтобы') == ['во-первых', 'хотеть', 'чтобы']
     assert await split_by_words(morph, '«Удивительно, но это стало началом!»') == ['удивительно', 'это', 'стать', 'начало']

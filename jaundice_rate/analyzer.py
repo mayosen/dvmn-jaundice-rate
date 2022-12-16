@@ -10,10 +10,10 @@ import pymorphy2
 from aiohttp import ClientSession
 from pymorphy2 import MorphAnalyzer
 
-from adapters import SANITIZERS, ArticleNotFound
-from timer import timing
-from text_tools import split_by_words, calculate_jaundice_rate
-from words_tools import CHARGED_WORDS
+from jaundice_rate.adapters import SANITIZERS, ArticleNotFound
+from jaundice_rate.timer import timing
+from jaundice_rate.text_tools import split_by_words, calculate_jaundice_rate
+from jaundice_rate.words_tools import CHARGED_WORDS
 
 logger = logging.getLogger(__name__)
 
@@ -41,37 +41,41 @@ class ProcessedArticle:
         )
 
 
-async def fetch(session: aiohttp.ClientSession, url: str):
-    async with session.get(url, timeout=aiohttp.ClientTimeout(2), raise_for_status=True) as response:
+async def fetch(session: aiohttp.ClientSession, url: str, timeout: aiohttp.ClientTimeout = aiohttp.ClientTimeout(2)):
+    async with session.get(url, timeout=timeout) as response:
+        response.raise_for_status()
         return await response.text()
+
+
+async def analyze_article(morph: MorphAnalyzer, text: str):
+    async with async_timeout.timeout(3):
+        return await split_by_words(morph, text)
 
 
 async def process_article(morph: MorphAnalyzer, session: ClientSession, url: str, result_list: list[ProcessedArticle]):
     try:
         html = await fetch(session, url)
+        sanitizer = SANITIZERS.get("inosmi_ru")
 
         with timing() as timer:
-            sanitizer = SANITIZERS.get("inosmi_ru")
             plaintext = sanitizer(html, plaintext=True)
-
-            async with async_timeout.timeout(3):
-                article_words = await split_by_words(morph, plaintext)
-
+            article_words = await analyze_article(morph, plaintext)
             rate = calculate_jaundice_rate(article_words, CHARGED_WORDS)
 
-        logger.info("Анализ %s закончен за %.2f сек", url, round(timer.elapsed, 2))
         result_list.append(ProcessedArticle(url, ProcessingStatus.OK, rate, len(article_words)))
+        logger.info("Анализ %s закончен за %.2f сек", url, round(timer.elapsed, 2))
 
     except aiohttp.ClientError:
         result_list.append(ProcessedArticle(url, ProcessingStatus.FETCH_ERROR))
+        logger.warning("Анализ %s прерван: %s", url, ProcessingStatus.FETCH_ERROR.value)
 
     except ArticleNotFound:
         result_list.append(ProcessedArticle(url, ProcessingStatus.PARSING_ERROR))
-        # TODO: Логичнее выбрасывать ошибку по отсутствию нужного санитайзера в SANITIZERS
+        logger.warning("Анализ %s прерван: %s", url, ProcessingStatus.PARSING_ERROR.value)
 
     except asyncio.TimeoutError:
         result_list.append(ProcessedArticle(url, ProcessingStatus.TIMEOUT))
-        # TODO: Тесты на все исключения
+        logger.warning("Анализ %s прерван: %s", url, ProcessingStatus.TIMEOUT.value)
 
 
 async def main():

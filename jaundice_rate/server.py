@@ -1,19 +1,19 @@
 import logging
+from functools import partial
 from typing import Callable
 
 import aiohttp
 import anyio
 import jsons
-import pymorphy2
 from aiohttp import web, web_request
+from pymorphy2 import MorphAnalyzer
 
-from analyzer import process_article
+from jaundice_rate.analyzer import process_article
 
 logger = logging.getLogger(__name__)
-morph = pymorphy2.MorphAnalyzer()
 
 
-async def url_handler(request: web_request.Request):
+async def url_handler(request: web_request.Request, morph: MorphAnalyzer):
     url_string = request.query.get("urls")
     urls = url_string.split(",")
 
@@ -45,9 +45,12 @@ def main():
         datefmt="%H:%M:%S",
     )
 
+    morph = MorphAnalyzer()
+    url_handler_partial = partial(url_handler, morph=morph)
+
     app = web.Application(middlewares=[error_middleware])
     app.add_routes([
-        web.get("/", url_handler),
+        web.get("/", url_handler_partial),
     ])
 
     web.run_app(app)
