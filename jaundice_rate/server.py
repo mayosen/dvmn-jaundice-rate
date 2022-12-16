@@ -5,7 +5,8 @@ from typing import Callable
 import aiohttp
 import anyio
 import jsons
-from aiohttp import web, web_request
+from aiohttp import web
+from aiohttp.web_request import Request
 from pymorphy2 import MorphAnalyzer
 
 from jaundice_rate.analyzer import process_article
@@ -13,7 +14,7 @@ from jaundice_rate.analyzer import process_article
 logger = logging.getLogger(__name__)
 
 
-async def url_handler(request: web_request.Request, morph: MorphAnalyzer):
+async def url_handler(request: Request, morph: MorphAnalyzer):
     url_string = request.query.get("urls")
     urls = url_string.split(",")
 
@@ -31,7 +32,7 @@ async def url_handler(request: web_request.Request, morph: MorphAnalyzer):
 
 
 @web.middleware
-async def error_middleware(request: web_request.Request, handler: Callable):
+async def error_middleware(request: Request, handler: Callable):
     try:
         return await handler(request)
     except web.HTTPClientError as e:

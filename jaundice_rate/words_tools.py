@@ -1,17 +1,17 @@
 __all__ = ['CHARGED_WORDS']
 
-import pathlib
+from pathlib import Path
 
 
-def _read_words(path: pathlib.Path):
+def _read_words(path: Path):
     with open(path, "r") as file:
-        lines = file.readlines()
-        return [line.rstrip("\n") for line in lines]
+        words = file.readlines()
+        return [word.rstrip("\n") for word in words]
 
 
-_path = pathlib.Path(__file__).parent
+_module_path = Path(__file__).parent
 
 CHARGED_WORDS = [
-    *_read_words(_path / "charged_words/negative_words.txt"),
-    *_read_words(_path / "charged_words/positive_words.txt"),
+    *_read_words(_module_path / "charged_words/negative_words.txt"),
+    *_read_words(_module_path / "charged_words/positive_words.txt"),
 ]

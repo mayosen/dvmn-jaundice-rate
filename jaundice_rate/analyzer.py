@@ -85,7 +85,7 @@ async def main():
         level=logging.DEBUG,
     )
 
-    TEST_ARTICLES = [
+    test_articles = [
         "https://inosmi.ru/20221214/eneregetika-258837716.html",
         "https://inosmi.ru/20221214/kitay-258839981.html",
         "https://inosmi.ru/20221214/ultrapravye-258844791.html",
@@ -96,16 +96,15 @@ async def main():
     ]
 
     morph = pymorphy2.MorphAnalyzer()
+    processed_articles: list[ProcessedArticle] = []
 
     async with aiohttp.ClientSession() as session:
-        processed_articles: list[ProcessedArticle] = []
-
         async with anyio.create_task_group() as tg:
-            for url in TEST_ARTICLES:
+            for url in test_articles:
                 tg.start_soon(process_article, morph, session, url, processed_articles)
 
-        formatted_articles = [article.format() for article in processed_articles]
-        print("\n".join(formatted_articles))
+    formatted_articles = [article.format() for article in processed_articles]
+    print("\n".join(formatted_articles))
 
 
 if __name__ == "__main__":
