@@ -41,15 +41,10 @@ class ProcessedArticle:
         )
 
 
-async def fetch(session: aiohttp.ClientSession, url: str, timeout: aiohttp.ClientTimeout = aiohttp.ClientTimeout(2)):
-    async with session.get(url, timeout=timeout) as response:
+async def fetch(session: aiohttp.ClientSession, url: str):
+    async with session.get(url, timeout=aiohttp.ClientTimeout(2)) as response:
         response.raise_for_status()
         return await response.text()
-
-
-async def analyze_article(morph: MorphAnalyzer, text: str):
-    async with async_timeout.timeout(3):
-        return await split_by_words(morph, text)
 
 
 async def process_article(morph: MorphAnalyzer, session: ClientSession, url: str, result_list: list[ProcessedArticle]):
@@ -59,7 +54,8 @@ async def process_article(morph: MorphAnalyzer, session: ClientSession, url: str
 
         with timing() as timer:
             plaintext = sanitizer(html, plaintext=True)
-            article_words = await analyze_article(morph, plaintext)
+            async with async_timeout.timeout(3):
+                article_words = await split_by_words(morph, plaintext)
             rate = calculate_jaundice_rate(article_words, CHARGED_WORDS)
 
         result_list.append(ProcessedArticle(url, ProcessingStatus.OK, rate, len(article_words)))
