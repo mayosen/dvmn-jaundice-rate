@@ -1,6 +1,6 @@
 import logging
 from functools import partial
-from typing import Callable
+from typing import Callable, Awaitable, Any
 
 import aiohttp
 import anyio
@@ -11,12 +11,15 @@ from pymorphy2 import MorphAnalyzer
 
 from jaundice_rate.analyzer import process_article
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("jaundice_rate.server")
 
 
 async def url_handler(request: Request, morph: MorphAnalyzer):
-    url_string = request.query.get("urls")
-    urls = url_string.split(",")
+    query = request.query
+    if "urls" not in query:
+        raise web.HTTPNotFound()
+
+    urls = query.get("urls").split(",")
 
     if len(urls) > 10:
         raise web.HTTPBadRequest(reason="Too many urls in request, should be 10 or less")
@@ -32,11 +35,11 @@ async def url_handler(request: Request, morph: MorphAnalyzer):
 
 
 @web.middleware
-async def error_middleware(request: Request, handler: Callable):
+async def error_middleware(request: Request, handler: Callable[[Request], Awaitable[Any]]):
     try:
         return await handler(request)
     except web.HTTPClientError as e:
-        return web.json_response({"error": e.reason})
+        return web.json_response(data={"error": e.reason}, status=e.status)
 
 
 def main():
