@@ -43,6 +43,11 @@ $ pip install -r requirements.txt
 $ python -m jaundice_rate.server
 ```
 
+## Настройка
+Серверу можно задать ограничение на максимальное количество URL в одном запросе.  
+Используйте аргумент CLI `--urls-limit 5` или переменную окружения `URLS_LIMIT=5`.  
+Значение по умолчанию `10.`
+
 # Как запустить тесты
 
 Для тестирования используется [pytest](https://docs.pytest.org/en/latest/).

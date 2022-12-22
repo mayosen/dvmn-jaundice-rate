@@ -15,7 +15,7 @@ from jaundice_rate.timer import timing
 from jaundice_rate.text_tools import split_by_words, calculate_jaundice_rate
 from jaundice_rate.words_tools import CHARGED_WORDS
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("jaundice_rate.analyzer")
 
 
 class ProcessingStatus(Enum):

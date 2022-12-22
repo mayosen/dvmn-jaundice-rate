@@ -1,6 +1,8 @@
 import logging
+from argparse import ArgumentParser
 from functools import partial
-from typing import Callable
+from os import environ
+from typing import Callable, Awaitable, Any
 
 import aiohttp
 import anyio
@@ -11,14 +13,18 @@ from pymorphy2 import MorphAnalyzer
 
 from jaundice_rate.analyzer import process_article
 
-logger = logging.getLogger(__name__)
+DEFAULT_URLS_LIMIT = 10
+logger = logging.getLogger("jaundice_rate.server")
 
 
-async def url_handler(request: Request, morph: MorphAnalyzer):
-    url_string = request.query.get("urls")
-    urls = url_string.split(",")
+async def url_handler(request: Request, morph: MorphAnalyzer, urls_limit: int):
+    query = request.query
+    if "urls" not in query:
+        raise web.HTTPNotFound()
 
-    if len(urls) > 10:
+    urls = query.get("urls").split(",")
+
+    if len(urls) > urls_limit:
         raise web.HTTPBadRequest(reason="Too many urls in request, should be 10 or less")
 
     processed_articles = []
@@ -32,11 +38,27 @@ async def url_handler(request: Request, morph: MorphAnalyzer):
 
 
 @web.middleware
-async def error_middleware(request: Request, handler: Callable):
+async def error_middleware(request: Request, handler: Callable[[Request], Awaitable[Any]]):
     try:
         return await handler(request)
     except web.HTTPClientError as e:
-        return web.json_response({"error": e.reason})
+        return web.json_response(data={"error": e.reason}, status=e.status)
+
+
+def parse_config() -> int:
+    parser = ArgumentParser()
+    parser.add_argument("--urls-limit", type=int, help="Limit of the URLs number per request", dest="limit")
+    args = parser.parse_args()
+    limit = args.limit or environ.get("URLS_LIMIT")
+    if limit:
+        limit = int(limit)
+        assert limit > 0
+        logging.debug("Using URLs limit: %d", limit)
+    else:
+        limit = DEFAULT_URLS_LIMIT
+        logging.debug("Using default URLs limit: %d", limit)
+
+    return limit
 
 
 def main():
@@ -45,13 +67,12 @@ def main():
         level=logging.DEBUG,
         datefmt="%H:%M:%S",
     )
-
     morph = MorphAnalyzer()
-    url_handler_partial = partial(url_handler, morph=morph)
+    urls_limit = parse_config()
 
     app = web.Application(middlewares=[error_middleware])
     app.add_routes([
-        web.get("/", url_handler_partial),
+        web.get("/", partial(url_handler, morph=morph, urls_limit=urls_limit)),
     ])
 
     web.run_app(app)
