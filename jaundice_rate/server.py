@@ -4,10 +4,9 @@ from functools import partial
 from os import environ
 from typing import Callable, Awaitable, Any
 
-import aiohttp
 import anyio
 import jsons
-from aiohttp import web
+from aiohttp import web, ClientSession
 from aiohttp.web_request import Request
 from pymorphy2 import MorphAnalyzer
 
@@ -25,11 +24,11 @@ async def url_handler(request: Request, morph: MorphAnalyzer, urls_limit: int):
     urls = query.get("urls").split(",")
 
     if len(urls) > urls_limit:
-        raise web.HTTPBadRequest(reason="Too many urls in request, should be 10 or less")
+        raise web.HTTPBadRequest(reason=f"Too many urls in request, should be {urls_limit} or less")
 
     processed_articles = []
 
-    async with aiohttp.ClientSession() as session:
+    async with ClientSession() as session:
         async with anyio.create_task_group() as tg:
             for url in urls:
                 tg.start_soon(process_article, morph, session, url, processed_articles)
